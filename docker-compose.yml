@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: gophermart-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gophermart
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gophermart-network
+
+  app:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: gophermart-app
+    ports:
+      - "8080:8080"
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: gophermart
+      RUN_ADDRESS: :8080
+      ACCRUAL_SYSTEM_ADDRESS: http://localhost:8081
+      LOG_LEVEL: info
+      JWT_SECRET: ${JWT_SECRET:-your-docker-secret-key}
+      JWT_TOKEN_DURATION: 86400
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gophermart-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  gophermart-network:
